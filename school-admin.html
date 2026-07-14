@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>School-Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --azul-oscuro:#0d2b6b;
+    --azul:#1d4ed8;
+    --azul-claro:#3b82f6;
+    --dorado:#f4c430;
+    --dorado-claro:#ffe066;
+    --bg:#f2f5fb;
+    --card:#ffffff;
+    --texto:#16213e;
+    --texto-suave:#6b7590;
+    --borde:#e3e8f3;
+    --rojo:#e5484d;
+    --verde:#16a34a;
+    --radio:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);font-family:'Inter',sans-serif;color:var(--texto);}
+  h1,h2,h3,.titulo{font-family:'Poppins',sans-serif;}
+  button{font-family:'Inter',sans-serif;cursor:pointer;border:none;}
+  input,select,textarea{font-family:'Inter',sans-serif;}
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-thumb{background:#c7d0e6;border-radius:10px;}
+
+  #app{max-width:520px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;display:flex;flex-direction:column;}
+
+  /* ---------- PIN ---------- */
+  #pinScreen{position:fixed;inset:0;background:linear-gradient(160deg,var(--azul-oscuro),var(--azul) 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;color:#fff;padding:24px;}
+  #pinScreen .gorro{font-size:54px;margin-bottom:6px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.25));}
+  #pinScreen h1{font-size:24px;margin:0 0 4px;letter-spacing:.3px;}
+  #pinScreen p{opacity:.85;margin:0 0 26px;font-size:13px;}
+  #pinDots{display:flex;gap:12px;margin-bottom:26px;}
+  .pinDot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.6);background:transparent;transition:.15s;}
+  .pinDot.on{background:var(--dorado);border-color:var(--dorado);}
+  #pinPad{display:grid;grid-template-columns:repeat(3,64px);gap:14px;}
+  .pinBtn{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:20px;font-weight:600;display:flex;align-items:center;justify-content:center;}
+  .pinBtn:active{background:rgba(255,255,255,.28);}
+  #pinError{color:#ffd1d1;font-size:13px;height:18px;margin-top:14px;}
+
+  /* ---------- HEADER ---------- */
+  .topbar{padding:20px 20px 16px;background:linear-gradient(135deg,var(--azul-oscuro),var(--azul));color:#fff;border-radius:0 0 24px 24px;position:relative;}
+  .topbar .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;font-weight:600;}
+  .topbar h1{font-size:22px;margin:2px 0 0;}
+  .backBtn{background:rgba(255,255,255,.15);color:#fff;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px;}
+
+  .contenido{flex:1;padding:18px 18px 90px;}
+
+  /* ---------- HOME ---------- */
+  .accionesHome{display:flex;gap:10px;margin:16px 0 18px;}
+  .btnPrincipal{flex:1;background:var(--azul);color:#fff;padding:14px;border-radius:14px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 6px 14px rgba(29,78,216,.25);}
+  .btnSecundario{flex:1;background:#fff;color:var(--azul);border:1.5px solid var(--borde);padding:14px;border-radius:14px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;}
+
+  .seccionTitulo{font-size:13px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px;}
+
+  .cardProyecto{background:var(--card);border-radius:var(--radio);padding:16px;margin-bottom:12px;border:1px solid var(--borde);display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;}
+  .cardProyecto::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(var(--azul),var(--dorado));}
+  .cardProyecto .icono{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--azul-claro),var(--azul));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+  .cardProyecto .info{flex:1;min-width:0;}
+  .cardProyecto .info h3{margin:0;font-size:15px;}
+  .cardProyecto .info span{font-size:12.5px;color:var(--texto-suave);}
+  .cardProyecto .flecha{color:var(--texto-suave);font-size:18px;}
+
+  .vacio{text-align:center;padding:40px 20px;color:var(--texto-suave);}
+  .vacio .em{font-size:34px;margin-bottom:8px;}
+
+  /* ---------- TABS PROYECTO ---------- */
+  .tabs{display:flex;gap:6px;background:#fff;border:1px solid var(--borde);border-radius:14px;padding:5px;margin-bottom:16px;overflow-x:auto;}
+  .tabBtn{flex:1;white-space:nowrap;padding:9px 10px;border-radius:10px;font-size:12.5px;font-weight:600;color:var(--texto-suave);background:transparent;}
+  .tabBtn.activo{background:var(--azul);color:#fff;}
+
+  /* ---------- DASHBOARD ---------- */
+  .statsGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .statCard{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:14px;}
+  .statCard .lbl{font-size:11.5px;color:var(--texto-suave);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+  .statCard .val{font-size:20px;font-weight:800;margin-top:4px;font-family:'Poppins',sans-serif;}
+  .statCard.full{grid-column:1/3;display:flex;align-items:center;gap:14px;}
+  .anillo{position:relative;width:64px;height:64px;flex-shrink:0;}
+  .anillo svg{transform:rotate(-90deg);}
+  .anillo .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;}
+
+  .filaConfig{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--borde);border-radius:14px;padding:12px 14px;margin-bottom:16px;}
+  .filaConfig label{font-size:12.5px;color:var(--texto-suave);font-weight:600;flex:1;}
+  .filaConfig input{width:64px;text-align:center;border:1px solid var(--borde);border-radius:8px;padding:6px;font-weight:700;}
+
+  .ventaItem{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .ventaItem .izq h4{margin:0;font-size:13.5px;}
+  .ventaItem .izq span{font-size:11.5px;color:var(--texto-suave);}
+  .ventaItem .der{text-align:right;}
+  .ventaItem .der .monto{font-weight:800;font-size:14px;}
+  .ventaItem .der .gan{font-size:11px;color:var(--verde);font-weight:600;}
+
+  /* ---------- PRODUCTOS ---------- */
+  .productoCard{background:#fff;border:1px solid var(--borde);border-radius:14px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:center;}
+  .productoCard img{width:52px;height:52px;border-radius:10px;object-fit:cover;background:#eef1f8;flex-shrink:0;}
+  .productoCard .noImg{width:52px;height:52px;border-radius:10px;background:#eef1f8;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+  .productoCard .info{flex:1;min-width:0;}
+  .productoCard .info h4{margin:0;font-size:14px;}
+  .productoCard .info .tag{display:inline-block;font-size:10.5px;background:#eef1ff;color:var(--azul);padding:2px 8px;border-radius:20px;font-weight:700;margin-top:3px;}
+  .productoCard .precio{font-weight:800;font-size:14px;color:var(--azul-oscuro);}
+  .productoCard .editBtn{background:none;color:var(--texto-suave);font-size:16px;padding:4px;}
+
+  .fab{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);max-width:480px;width:calc(100% - 36px);background:var(--azul);color:#fff;padding:15px;border-radius:16px;font-weight:700;font-size:14.5px;box-shadow:0 10px 24px rgba(29,78,216,.35);display:flex;align-items:center;justify-content:center;gap:8px;z-index:50;}
+
+  /* ---------- FORM / MODAL ---------- */
+  .modalFondo{position:fixed;inset:0;background:rgba(13,20,45,.55);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+  .modalCaja{background:#fff;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 20px 26px;max-height:88vh;overflow-y:auto;animation:subir .22s ease;}
+  @keyframes subir{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modalCaja h2{margin:0 0 16px;font-size:18px;}
+  .campo{margin-bottom:14px;}
+  .campo label{display:block;font-size:12.5px;font-weight:700;color:var(--texto-suave);margin-bottom:6px;}
+  .campo input,.campo select,.campo textarea{width:100%;padding:11px 12px;border:1.5px solid var(--borde);border-radius:11px;font-size:14px;background:#fbfcfe;}
+  .campo textarea{resize:vertical;min-height:60px;}
+  .filaDos{display:flex;gap:10px;}
+  .filaDos .campo{flex:1;}
+  .subeImg{border:1.5px dashed var(--borde);border-radius:12px;padding:14px;text-align:center;color:var(--texto-suave);font-size:12.5px;position:relative;background:#fbfcfe;}
+  .subeImg img{max-width:100%;max-height:120px;border-radius:8px;margin-top:8px;}
+  .subeImg input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .modalBtns{display:flex;gap:10px;margin-top:6px;}
+  .btnCancelar{flex:1;background:#f1f3f9;color:var(--texto-suave);padding:13px;border-radius:12px;font-weight:700;}
+  .btnGuardar{flex:2;background:var(--azul);color:#fff;padding:13px;border-radius:12px;font-weight:700;}
+  .cerrarModal{position:absolute;top:14px;right:16px;background:#f1f3f9;width:30px;height:30px;border-radius:50%;color:var(--texto-suave);font-size:15px;}
+  .modalCaja{position:relative;}
+
+  /* ---------- USUARIOS / CHAT ---------- */
+  .usuarioCard{background:#fff;border:1px solid var(--borde);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+  .avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--azul-claro),var(--azul));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
+  .usuarioCard .info{flex:1;min-width:0;}
+  .usuarioCard .info h4{margin:0;font-size:14px;}
+  .usuarioCard .info span{font-size:11.5px;color:var(--texto-suave);}
+  .chatBtn{background:#eef1ff;color:var(--azul);width:38px;height:38px;border-radius:10px;font-size:16px;}
+
+  #chatModal{position:fixed;inset:0;background:#fff;z-index:300;display:flex;flex-direction:column;max-width:520px;margin:0 auto;}
+  .chatHeader{background:linear-gradient(135deg,var(--azul-oscuro),var(--azul));color:#fff;padding:16px 18px;display:flex;align-items:center;gap:12px;}
+  .chatHeader .cerrarChat{background:rgba(255,255,255,.15);width:32px;height:32px;border-radius:10px;color:#fff;font-size:16px;}
+  .chatBody{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--bg);}
+  .msj{max-width:75%;padding:10px 13px;border-radius:14px;font-size:13.5px;line-height:1.4;}
+  .msj.admin{align-self:flex-end;background:var(--azul);color:#fff;border-bottom-right-radius:4px;}
+  .msj.usuario{align-self:flex-start;background:#fff;border:1px solid var(--borde);border-bottom-left-radius:4px;}
+  .msj .hora{display:block;font-size:9.5px;opacity:.65;margin-top:3px;}
+  .chatInputBar{display:flex;gap:8px;padding:12px;border-top:1px solid var(--borde);background:#fff;}
+  .chatInputBar input{flex:1;border:1.5px solid var(--borde);border-radius:22px;padding:11px 16px;font-size:13.5px;}
+  .chatInputBar button{background:var(--azul);color:#fff;width:42px;height:42px;border-radius:50%;font-size:16px;}
+
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--texto);color:#fff;padding:11px 20px;border-radius:30px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 8px 20px rgba(0,0,0,.2);opacity:0;transition:.25s;pointer-events:none;}
+  .toast.show{opacity:1;bottom:100px;}
+
+  .oculto{display:none !important;}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- PIN -->
+  <div id="pinScreen">
+    <div class="gorro">🎓</div>
+    <h1>School-Admin</h1>
+    <p>Ingresá el PIN para continuar</p>
+    <div id="pinDots">
+      <div class="pinDot"></div><div class="pinDot"></div><div class="pinDot"></div><div class="pinDot"></div>
+    </div>
+    <div id="pinPad"></div>
+    <div id="pinError"></div>
+  </div>
+
+  <!-- HOME -->
+  <div id="homeScreen" class="oculto">
+    <div class="topbar">
+      <div class="eyebrow">School-Admin</div>
+      <h1>Mis Proyectos</h1>
+    </div>
+    <div class="contenido">
+      <div class="accionesHome">
+        <button class="btnPrincipal" onclick="abrirModalProyecto()">+ Proyecto</button>
+        <button class="btnSecundario" onclick="irATodosLosProyectos()">Ver Todos &gt;</button>
+      </div>
+      <div class="seccionTitulo">Recientes</div>
+      <div id="listaProyectosHome"></div>
+    </div>
+  </div>
+
+  <!-- TODOS LOS PROYECTOS -->
+  <div id="todosScreen" class="oculto">
+    <div class="topbar">
+      <button class="backBtn" onclick="irAHome()">←</button>
+      <div class="eyebrow">School-Admin</div>
+      <h1>Todos los Proyectos</h1>
+    </div>
+    <div class="contenido">
+      <div id="listaProyectosTodos"></div>
+    </div>
+  </div>
+
+  <!-- PROYECTO -->
+  <div id="proyectoScreen" class="oculto">
+    <div class="topbar">
+      <button class="backBtn" onclick="irAHome()">←</button>
+      <div class="eyebrow">Proyecto</div>
+      <h1 id="nombreProyectoTitulo">-</h1>
+    </div>
+    <div class="contenido">
+      <div class="tabs">
+        <button class="tabBtn" data-tab="dashboard" onclick="cambiarTab('dashboard')">Dashboard</button>
+        <button class="tabBtn" data-tab="productos" onclick="cambiarTab('productos')">Precios</button>
+        <button class="tabBtn" data-tab="ventas" onclick="cambiarTab('ventas')">Ventas</button>
+        <button class="tabBtn" data-tab="usuarios" onclick="cambiarTab('usuarios')">Usuarios</button>
+      </div>
+
+      <div id="tabDashboard" class="tabContenido">
+        <div class="statsGrid">
+          <div class="statCard"><div class="lbl">Total Vendido</div><div class="val" id="valTotalVendido">$0</div></div>
+          <div class="statCard"><div class="lbl">Ganancia</div><div class="val" id="valGanancia" style="color:var(--verde);">$0</div></div>
+          <div class="statCard full">
+            <div class="anillo">
+              <svg width="64" height="64"><circle cx="32" cy="32" r="27" stroke="#e3e8f3" stroke-width="7" fill="none"/><circle id="circuloPct" cx="32" cy="32" r="27" stroke="#f4c430" stroke-width="7" fill="none" stroke-dasharray="169.6" stroke-dashoffset="169.6" stroke-linecap="round"/></svg>
+              <div class="pct" id="txtPct">0%</div>
+            </div>
+            <div>
+              <div class="lbl">% Ganancia estimado</div>
+              <div style="font-size:12px;color:var(--texto-suave);margin-top:2px;">Se usa cuando el producto no tiene costo cargado</div>
+            </div>
+          </div>
+        </div>
+        <div class="filaConfig">
+          <label>% Ganancia del proyecto</label>
+          <input type="number" id="inputPorcentaje" min="0" max="100" onchange="guardarPorcentaje()">
+        </div>
+        <div class="seccionTitulo">Últimas ventas</div>
+        <div id="listaUltimasVentas"></div>
+      </div>
+
+      <div id="tabProductos" class="tabContenido oculto">
+        <div id="listaProductos"></div>
+      </div>
+
+      <div id="tabVentas" class="tabContenido oculto">
+        <div id="listaVentasHistorial"></div>
+      </div>
+
+      <div id="tabUsuarios" class="tabContenido oculto">
+        <div id="listaUsuarios"></div>
+      </div>
+    </div>
+
+    <button id="fabAccion" class="fab oculto" onclick="fabClick()">+ Nueva Venta</button>
+  </div>
+</div>
+
+<!-- MODAL NUEVO PROYECTO -->
+<div id="modalProyecto" class="modalFondo oculto">
+  <div class="modalCaja">
+    <button class="cerrarModal" onclick="cerrarModal('modalProyecto')">✕</button>
+    <h2>Nuevo Proyecto</h2>
+    <div class="campo">
+      <label>Nombre del proyecto</label>
+      <input type="text" id="inputNombreProyecto" placeholder="Ej: Venta de Bonbones 3ero A">
+    </div>
+    <div class="modalBtns">
+      <button class="btnCancelar" onclick="cerrarModal('modalProyecto')">Cancelar</button>
+      <button class="btnGuardar" onclick="crearProyecto()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRODUCTO -->
+<div id="modalProducto" class="modalFondo oculto">
+  <div class="modalCaja">
+    <button class="cerrarModal" onclick="cerrarModal('modalProducto')">✕</button>
+    <h2 id="tituloModalProducto">Nuevo Producto</h2>
+    <input type="hidden" id="productoIdEdit">
+    <div class="campo">
+      <label>Tipo</label>
+      <select id="selectTipo" onchange="onTipoChange()">
+        <option value="Bonbones">Bonbones</option>
+        <option value="Panes">Panes</option>
+        <option value="Brownies">Brownies</option>
+        <option value="Otro">Otro (personalizado)</option>
+      </select>
+    </div>
+    <div class="campo" id="campoTipoCustom" style="display:none;">
+      <label>Especificá el tipo</label>
+      <input type="text" id="inputTipoCustom" placeholder="Ej: Alfajores">
+    </div>
+    <div class="campo">
+      <label>Nombre del producto</label>
+      <input type="text" id="inputNombreProducto" placeholder="Ej: Bombón de dulce de leche">
+    </div>
+    <div class="campo">
+      <label>Descripción (opcional)</label>
+      <textarea id="inputDescProducto" placeholder="Detalle para mostrar en la app"></textarea>
+    </div>
+    <div class="filaDos">
+      <div class="campo">
+        <label>Precio de venta</label>
+        <input type="number" id="inputPrecioProducto" placeholder="0">
+      </div>
+      <div class="campo">
+        <label>Costo (opcional)</label>
+        <input type="number" id="inputCostoProducto" placeholder="0">
+      </div>
+    </div>
+    <div class="campo">
+      <label>Imagen / Logo del producto</label>
+      <div class="subeImg" id="cajaImg">
+        <span id="textoSubeImg">Tocá para subir una imagen</span>
+        <input type="file" accept="image/*" id="inputImgProducto" onchange="previewImg(event)">
+        <br><img id="previewImgProducto" class="oculto">
+      </div>
+    </div>
+    <div class="modalBtns">
+      <button class="btnCancelar" onclick="cerrarModal('modalProducto')">Cancelar</button>
+      <button class="btnGuardar" onclick="guardarProducto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVA VENTA -->
+<div id="modalVenta" class="modalFondo oculto">
+  <div class="modalCaja">
+    <button class="cerrarModal" onclick="cerrarModal('modalVenta')">✕</button>
+    <h2>Nueva Venta</h2>
+    <div class="campo">
+      <label>Producto</label>
+      <select id="selectProductoVenta" onchange="recalcularVenta()"></select>
+    </div>
+    <div class="filaDos">
+      <div class="campo">
+        <label>Cantidad</label>
+        <input type="number" id="inputCantidadVenta" value="1" min="1" onchange="recalcularVenta()">
+      </div>
+      <div class="campo">
+        <label>Total</label>
+        <input type="text" id="txtTotalVenta" readonly value="$0">
+      </div>
+    </div>
+    <div class="campo">
+      <label>Comprador</label>
+      <select id="selectCompradorVenta">
+        <option value="">Venta sin registrar / manual</option>
+      </select>
+    </div>
+    <div class="modalBtns">
+      <button class="btnCancelar" onclick="cerrarModal('modalVenta')">Cancelar</button>
+      <button class="btnGuardar" onclick="guardarVenta()">Registrar Venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div id="chatModal" class="oculto">
+  <div class="chatHeader">
+    <button class="cerrarChat" onclick="cerrarChat()">←</button>
+    <div>
+      <div style="font-weight:700;font-size:15px;" id="chatNombreUsuario">Usuario</div>
+      <div style="font-size:11px;opacity:.8;">Chat</div>
+    </div>
+  </div>
+  <div class="chatBody" id="chatBody"></div>
+  <div class="chatInputBar">
+    <input type="text" id="inputChat" placeholder="Escribí un mensaje...">
+    <button onclick="enviarMensajeAdmin()">➤</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ CONFIG SUPABASE ============
+var SUPABASE_URL = 'https://flkjwpcypihdkiyblucs.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsa2p3cGN5cGloZGtpeWJsdWNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMDM2MjMsImV4cCI6MjA5ODY3OTYyM30.Zevico24gkdO9-d8xOWKFSRsKt_npHef4F2OFCR5DsU';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var PIN_ADMIN = '2026';
+
+// ============ ESTADO GLOBAL ============
+var pinActual = '';
+var proyectos = [];
+var proyectoActivo = null;
+var productosProyecto = [];
+var ventasProyecto = [];
+var usuariosRegistrados = [];
+var chatUsuarioActivo = null;
+var chatChannel = null;
+var imgProductoBase64 = '';
+
+// ============ TOAST ============
+function mostrarToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+// ============ PIN ============
+function armarPinPad(){
+  var pad = document.getElementById('pinPad');
+  var teclas = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  var html = '';
+  for(var i=0;i<teclas.length;i++){
+    var t = teclas[i];
+    if(t === ''){ html += '<div></div>'; }
+    else { html += '<button class="pinBtn" onclick="tocarTecla(\''+t+'\')">'+t+'</button>'; }
+  }
+  pad.innerHTML = html;
+}
+function tocarTecla(t){
+  if(t === '⌫'){
+    pinActual = pinActual.slice(0, -1);
+  } else if(pinActual.length < 4){
+    pinActual = pinActual + t;
+  }
+  actualizarDots();
+  if(pinActual.length === 4){
+    setTimeout(verificarPin, 150);
+  }
+}
+function actualizarDots(){
+  var dots = document.querySelectorAll('.pinDot');
+  for(var i=0;i<dots.length;i++){
+    if(i < pinActual.length){ dots[i].classList.add('on'); }
+    else { dots[i].classList.remove('on'); }
+  }
+}
+function verificarPin(){
+  if(pinActual === PIN_ADMIN){
+    document.getElementById('pinScreen').style.display = 'none';
+    document.getElementById('homeScreen').classList.remove('oculto');
+    cargarProyectos();
+    cargarUsuariosGlobal();
+  } else {
+    document.getElementById('pinError').textContent = 'PIN incorrecto';
+    pinActual = '';
+    actualizarDots();
+    setTimeout(function(){ document.getElementById('pinError').textContent = ''; }, 1500);
+  }
+}
+
+// ============ NAVEGACION ============
+function ocultarTodasLasPantallas(){
+  document.getElementById('homeScreen').classList.add('oculto');
+  document.getElementById('todosScreen').classList.add('oculto');
+  document.getElementById('proyectoScreen').classList.add('oculto');
+}
+function irAHome(){
+  ocultarTodasLasPantallas();
+  document.getElementById('homeScreen').classList.remove('oculto');
+  cargarProyectos();
+}
+function irATodosLosProyectos(){
+  ocultarTodasLasPantallas();
+  document.getElementById('todosScreen').classList.remove('oculto');
+  renderizarListaProyectos('listaProyectosTodos', proyectos);
+}
+
+// ============ PROYECTOS ============
+function cargarProyectos(){
+  sb.from('school_projects').select('*').order('created_at', {ascending:false}).then(function(res){
+    if(res.error){ mostrarToast('Error cargando proyectos'); return; }
+    proyectos = res.data || [];
+    renderizarListaProyectos('listaProyectosHome', proyectos.slice(0,5));
+  });
+}
+function renderizarListaProyectos(idContenedor, lista){
+  var cont = document.getElementById(idContenedor);
+  if(!lista || lista.length === 0){
+    cont.innerHTML = '<div class="vacio"><div class="em">🎓</div>Todavía no creaste ningún proyecto</div>';
+    return;
+  }
+  var html = '';
+  for(var i=0;i<lista.length;i++){
+    var p = lista[i];
+    html += '<div class="cardProyecto" onclick="abrirProyecto(\''+p.id+'\')">'+
+      '<div class="icono">🎓</div>'+
+      '<div class="info"><h3>'+escapeHtml(p.nombre)+'</h3><span>Toca para ver el detalle</span></div>'+
+      '<div class="flecha">›</div>'+
+    '</div>';
+  }
+  cont.innerHTML = html;
+}
+function abrirModalProyecto(){
+  document.getElementById('inputNombreProyecto').value = '';
+  abrirModal('modalProyecto');
+}
+function crearProyecto(){
+  var nombre = document.getElementById('inputNombreProyecto').value.trim();
+  if(!nombre){ mostrarToast('Poné un nombre para el proyecto'); return; }
+  sb.from('school_projects').insert([{ nombre: nombre, porcentaje_ganancia: 30 }]).select().then(function(res){
+    if(res.error){ mostrarToast('No se pudo crear el proyecto'); return; }
+    cerrarModal('modalProyecto');
+    mostrarToast('Proyecto creado');
+    cargarProyectos();
+  });
+}
+
+function abrirProyecto(id){
+  var encontrado = null;
+  for(var i=0;i<proyectos.length;i++){ if(proyectos[i].id === id){ encontrado = proyectos[i]; break; } }
+  if(!encontrado){ return; }
+  proyectoActivo = encontrado;
+  ocultarTodasLasPantallas();
+  document.getElementById('proyectoScreen').classList.remove('oculto');
+  document.getElementById('nombreProyectoTitulo').textContent = proyectoActivo.nombre;
+  document.getElementById('inputPorcentaje').value = proyectoActivo.porcentaje_ganancia || 0;
+  cambiarTab('dashboard');
+  cargarProductos();
+  cargarVentas();
+}
+
+// ============ TABS ============
+function cambiarTab(nombre){
+  var tabs = ['dashboard','productos','ventas','usuarios'];
+  for(var i=0;i<tabs.length;i++){
+    var btn = document.querySelector('.tabBtn[data-tab="'+tabs[i]+'"]');
+    var cont = document.getElementById('tab' + capitalizar(tabs[i]));
+    if(tabs[i] === nombre){
+      btn.classList.add('activo');
+      cont.classList.remove('oculto');
+    } else {
+      btn.classList.remove('activo');
+      cont.classList.add('oculto');
+    }
+  }
+  var fab = document.getElementById('fabAccion');
+  if(nombre === 'productos'){
+    fab.textContent = '+ Nuevo Producto';
+    fab.classList.remove('oculto');
+  } else if(nombre === 'dashboard' || nombre === 'ventas'){
+    fab.textContent = '+ Nueva Venta';
+    fab.classList.remove('oculto');
+  } else {
+    fab.classList.add('oculto');
+  }
+  if(nombre === 'usuarios'){ renderizarUsuarios(); }
+}
+function capitalizar(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+function fabClick(){
+  var activo = document.querySelector('.tabBtn.activo').getAttribute('data-tab');
+  if(activo === 'productos'){ abrirModalProducto(); }
+  else { abrirModalVenta(); }
+}
+
+// ============ PRODUCTOS ============
+function cargarProductos(){
+  sb.from('school_products').select('*').eq('project_id', proyectoActivo.id).order('created_at',{ascending:false}).then(function(res){
+    if(res.error){ mostrarToast('Error cargando productos'); return; }
+    productosProyecto = res.data || [];
+    renderizarProductos();
+  });
+}
+function renderizarProductos(){
+  var cont = document.getElementById('listaProductos');
+  if(productosProyecto.length === 0){
+    cont.innerHTML = '<div class="vacio"><div class="em">🧁</div>Todavía no cargaste productos ni precios</div>';
+    return;
+  }
+  var html = '';
+  for(var i=0;i<productosProyecto.length;i++){
+    var p = productosProyecto[i];
+    var imgHtml = p.imagen_base64 ? '<img src="'+p.imagen_base64+'">' : '<div class="noImg">🎂</div>';
+    html += '<div class="productoCard">'+
+      imgHtml+
+      '<div class="info"><h4>'+escapeHtml(p.nombre)+'</h4><span class="tag">'+escapeHtml(p.tipo)+'</span></div>'+
+      '<div class="precio">$'+Number(p.precio||0).toLocaleString('es-AR')+'</div>'+
+      '<button class="editBtn" onclick="editarProducto(\''+p.id+'\')">✏️</button>'+
+    '</div>';
+  }
+  cont.innerHTML = html;
+}
+function abrirModalProducto(){
+  document.getElementById('tituloModalProducto').textContent = 'Nuevo Producto';
+  document.getElementById('productoIdEdit').value = '';
+  document.getElementById('selectTipo').value = 'Bonbones';
+  document.getElementById('campoTipoCustom').style.display = 'none';
+  document.getElementById('inputTipoCustom').value = '';
+  document.getElementById('inputNombreProducto').value = '';
+  document.getElementById('inputDescProducto').value = '';
+  document.getElementById('inputPrecioProducto').value = '';
+  document.getElementById('inputCostoProducto').value = '';
+  document.getElementById('previewImgProducto').classList.add('oculto');
+  document.getElementById('textoSubeImg').textContent = 'Tocá para subir una imagen';
+  imgProductoBase64 = '';
+  abrirModal('modalProducto');
+}
+function editarProducto(id){
+  var p = null;
+  for(var i=0;i<productosProyecto.length;i++){ if(productosProyecto[i].id === id){ p = productosProyecto[i]; break; } }
+  if(!p){ return; }
+  document.getElementById('tituloModalProducto').textContent = 'Editar Producto';
+  document.getElementById('productoIdEdit').value = p.id;
+  var tiposBase = ['Bonbones','Panes','Brownies'];
+  if(tiposBase.indexOf(p.tipo) >= 0){
+    document.getElementById('selectTipo').value = p.tipo;
+    document.getElementById('campoTipoCustom').style.display = 'none';
+  } else {
+    document.getElementById('selectTipo').value = 'Otro';
+    document.getElementById('campoTipoCustom').style.display = 'block';
+    document.getElementById('inputTipoCustom').value = p.tipo;
+  }
+  document.getElementById('inputNombreProducto').value = p.nombre;
+  document.getElementById('inputDescProducto').value = p.descripcion || '';
+  document.getElementById('inputPrecioProducto').value = p.precio || '';
+  document.getElementById('inputCostoProducto').value = p.costo || '';
+  imgProductoBase64 = p.imagen_base64 || '';
+  if(imgProductoBase64){
+    document.getElementById('previewImgProducto').src = imgProductoBase64;
+    document.getElementById('previewImgProducto').classList.remove('oculto');
+    document.getElementById('textoSubeImg').textContent = 'Imagen cargada (tocá para cambiar)';
+  } else {
+    document.getElementById('previewImgProducto').classList.add('oculto');
+    document.getElementById('textoSubeImg').textContent = 'Tocá para subir una imagen';
+  }
+  abrirModal('modalProducto');
+}
+function onTipoChange(){
+  var v = document.getElementById('selectTipo').value;
+  document.getElementById('campoTipoCustom').style.display = (v === 'Otro') ? 'block' : 'none';
+}
+function previewImg(ev){
+  var archivo = ev.target.files[0];
+  if(!archivo){ return; }
+  var lector = new FileReader();
+  lector.onload = function(e){
+    imgProductoBase64 = e.target.result;
+    document.getElementById('previewImgProducto').src = imgProductoBase64;
+    document.getElementById('previewImgProducto').classList.remove('oculto');
+    document.getElementById('textoSubeImg').textContent = 'Imagen cargada (tocá para cambiar)';
+  };
+  lector.readAsDataURL(archivo);
+}
+function guardarProducto(){
+  var tipo = document.getElementById('selectTipo').value;
+  if(tipo === 'Otro'){
+    tipo = document.getElementById('inputTipoCustom').value.trim() || 'Otro';
+  }
+  var nombre = document.getElementById('inputNombreProducto').value.trim();
+  var precio = parseFloat(document.getElementById('inputPrecioProducto').value) || 0;
+  var costo = parseFloat(document.getElementById('inputCostoProducto').value) || 0;
+  var desc = document.getElementById('inputDescProducto').value.trim();
+  var idEdit = document.getElementById('productoIdEdit').value;
+  if(!nombre){ mostrarToast('Poné un nombre para el producto'); return; }
+  var payload = {
+    project_id: proyectoActivo.id,
+    tipo: tipo,
+    nombre: nombre,
+    descripcion: desc,
+    precio: precio,
+    costo: costo,
+    imagen_base64: imgProductoBase64
+  };
+  if(idEdit){
+    sb.from('school_products').update(payload).eq('id', idEdit).then(function(res){
+      if(res.error){ mostrarToast('No se pudo actualizar'); return; }
+      cerrarModal('modalProducto');
+      mostrarToast('Producto actualizado');
+      cargarProductos();
+    });
+  } else {
+    sb.from('school_products').insert([payload]).then(function(res){
+      if(res.error){ mostrarToast('No se pudo guardar'); return; }
+      cerrarModal('modalProducto');
+      mostrarToast('Producto guardado');
+      cargarProductos();
+    });
+  }
+}
+
+// ============ VENTAS ============
+function cargarVentas(){
+  sb.from('school_sales').select('*').eq('project_id', proyectoActivo.id).order('fecha',{ascending:false}).then(function(res){
+    if(res.error){ mostrarToast('Error cargando ventas'); return; }
+    ventasProyecto = res.data || [];
+    renderizarDashboard();
+    renderizarVentasHistorial();
+  });
+}
+function renderizarDashboard(){
+  var totalVendido = 0, totalGanancia = 0;
+  for(var i=0;i<ventasProyecto.length;i++){
+    totalVendido += Number(ventasProyecto[i].total || 0);
+    totalGanancia += Number(ventasProyecto[i].ganancia || 0);
+  }
+  document.getElementById('valTotalVendido').textContent = '$' + totalVendido.toLocaleString('es-AR');
+  document.getElementById('valGanancia').textContent = '$' + totalGanancia.toLocaleString('es-AR');
+  var pct = proyectoActivo.porcentaje_ganancia || 0;
+  document.getElementById('txtPct').textContent = pct + '%';
+  var circ = document.getElementById('circuloPct');
+  var circunferencia = 169.6;
+  var offset = circunferencia - (circunferencia * Math.min(pct,100) / 100);
+  circ.setAttribute('stroke-dashoffset', offset);
+
+  var cont = document.getElementById('listaUltimasVentas');
+  var ultimas = ventasProyecto.slice(0,5);
+  if(ultimas.length === 0){
+    cont.innerHTML = '<div class="vacio"><div class="em">🧾</div>Todavía no registraste ventas</div>';
+    return;
+  }
+  cont.innerHTML = renderizarItemsVenta(ultimas);
+}
+function renderizarVentasHistorial(){
+  var cont = document.getElementById('listaVentasHistorial');
+  if(ventasProyecto.length === 0){
+    cont.innerHTML = '<div class="vacio"><div class="em">🧾</div>Todavía no registraste ventas</div>';
+    return;
+  }
+  cont.innerHTML = renderizarItemsVenta(ventasProyecto);
+}
+function renderizarItemsVenta(lista){
+  var html = '';
+  for(var i=0;i<lista.length;i++){
+    var v = lista[i];
+    var nombreProd = obtenerNombreProducto(v.product_id);
+    var fecha = new Date(v.fecha);
+    var fechaTxt = fecha.toLocaleDateString('es-AR') + ' ' + fecha.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    html += '<div class="ventaItem">'+
+      '<div class="izq"><h4>'+escapeHtml(nombreProd)+' x'+v.cantidad+'</h4><span>'+fechaTxt+'</span></div>'+
+      '<div class="der"><div class="monto">$'+Number(v.total||0).toLocaleString('es-AR')+'</div><div class="gan">+ $'+Number(v.ganancia||0).toLocaleString('es-AR')+'</div></div>'+
+    '</div>';
+  }
+  return html;
+}
+function obtenerNombreProducto(id){
+  for(var i=0;i<productosProyecto.length;i++){
+    if(productosProyecto[i].id === id){ return productosProyecto[i].nombre; }
+  }
+  return 'Producto';
+}
+function guardarPorcentaje(){
+  var val = parseFloat(document.getElementById('inputPorcentaje').value) || 0;
+  sb.from('school_projects').update({porcentaje_ganancia: val}).eq('id', proyectoActivo.id).then(function(res){
+    if(res.error){ mostrarToast('No se pudo guardar el %'); return; }
+    proyectoActivo.porcentaje_ganancia = val;
+    renderizarDashboard();
+    mostrarToast('% de ganancia actualizado');
+  });
+}
+
+function abrirModalVenta(){
+  var select = document.getElementById('selectProductoVenta');
+  var html = '';
+  for(var i=0;i<productosProyecto.length;i++){
+    var p = productosProyecto[i];
+    html += '<option value="'+p.id+'">'+escapeHtml(p.nombre)+' - $'+Number(p.precio||0).toLocaleString('es-AR')+'</option>';
+  }
+  if(!html){ html = '<option value="">Primero cargá un producto en Precios</option>'; }
+  select.innerHTML = html;
+
+  var selectComprador = document.getElementById('selectCompradorVenta');
+  var htmlComp = '<option value="">Venta sin registrar / manual</option>';
+  for(var j=0;j<usuariosRegistrados.length;j++){
+    htmlComp += '<option value="'+usuariosRegistrados[j].id+'">'+escapeHtml(usuariosRegistrados[j].nombre)+'</option>';
+  }
+  selectComprador.innerHTML = htmlComp;
+
+  document.getElementById('inputCantidadVenta').value = 1;
+  abrirModal('modalVenta');
+  recalcularVenta();
+}
+function recalcularVenta(){
+  var idProd = document.getElementById('selectProductoVenta').value;
+  var cant = parseInt(document.getElementById('inputCantidadVenta').value) || 1;
+  var p = null;
+  for(var i=0;i<productosProyecto.length;i++){ if(productosProyecto[i].id === idProd){ p = productosProyecto[i]; break; } }
+  var total = p ? Number(p.precio||0) * cant : 0;
+  document.getElementById('txtTotalVenta').value = '$' + total.toLocaleString('es-AR');
+}
+function guardarVenta(){
+  var idProd = document.getElementById('selectProductoVenta').value;
+  var cant = parseInt(document.getElementById('inputCantidadVenta').value) || 1;
+  var idComprador = document.getElementById('selectCompradorVenta').value || null;
+  var p = null;
+  for(var i=0;i<productosProyecto.length;i++){ if(productosProyecto[i].id === idProd){ p = productosProyecto[i]; break; } }
+  if(!p){ mostrarToast('Elegí un producto válido'); return; }
+  var total = Number(p.precio||0) * cant;
+  var ganancia = 0;
+  if(p.costo && p.costo > 0){
+    ganancia = (Number(p.precio) - Number(p.costo)) * cant;
+  } else {
+    var pct = proyectoActivo.porcentaje_ganancia || 0;
+    ganancia = total * (pct/100);
+  }
+  var payload = {
+    project_id: proyectoActivo.id,
+    product_id: p.id,
+    usuario_id: idComprador,
+    cantidad: cant,
+    precio_unitario: p.precio,
+    total: total,
+    ganancia: ganancia
+  };
+  sb.from('school_sales').insert([payload]).then(function(res){
+    if(res.error){ mostrarToast('No se pudo registrar la venta'); return; }
+    cerrarModal('modalVenta');
+    mostrarToast('Venta registrada');
+    cargarVentas();
+  });
+}
+
+// ============ USUARIOS Y CHAT ============
+function cargarUsuariosGlobal(){
+  sb.from('school_users').select('*').order('created_at',{ascending:false}).then(function(res){
+    if(res.error){ return; }
+    usuariosRegistrados = res.data || [];
+  });
+}
+function renderizarUsuarios(){
+  var cont = document.getElementById('listaUsuarios');
+  if(usuariosRegistrados.length === 0){
+    cont.innerHTML = '<div class="vacio"><div class="em">👥</div>Todavía no hay usuarios registrados en la app</div>';
+    return;
+  }
+  var html = '';
+  for(var i=0;i<usuariosRegistrados.length;i++){
+    var u = usuariosRegistrados[i];
+    var inicial = (u.nombre || '?').charAt(0).toUpperCase();
+    html += '<div class="usuarioCard">'+
+      '<div class="avatar">'+inicial+'</div>'+
+      '<div class="info"><h4>'+escapeHtml(u.nombre)+'</h4><span>'+escapeHtml(u.email||'')+'</span></div>'+
+      '<button class="chatBtn" onclick="abrirChat(\''+u.id+'\',\''+escapeHtml(u.nombre)+'\')">💬</button>'+
+    '</div>';
+  }
+  cont.innerHTML = html;
+}
+function abrirChat(idUsuario, nombreUsuario){
+  chatUsuarioActivo = idUsuario;
+  document.getElementById('chatNombreUsuario').textContent = nombreUsuario;
+  document.getElementById('chatModal').classList.remove('oculto');
+  cargarMensajesChat();
+  suscribirChat();
+}
+function cerrarChat(){
+  document.getElementById('chatModal').classList.add('oculto');
+  if(chatChannel){ sb.removeChannel(chatChannel); chatChannel = null; }
+  chatUsuarioActivo = null;
+}
+function cargarMensajesChat(){
+  sb.from('school_messages').select('*').eq('usuario_id', chatUsuarioActivo).order('created_at',{ascending:true}).then(function(res){
+    if(res.error){ return; }
+    renderizarMensajes(res.data || []);
+  });
+}
+function renderizarMensajes(lista){
+  var cont = document.getElementById('chatBody');
+  var html = '';
+  for(var i=0;i<lista.length;i++){
+    var m = lista[i];
+    var hora = new Date(m.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    html += '<div class="msj '+m.remitente+'">'+escapeHtml(m.mensaje)+'<span class="hora">'+hora+'</span></div>';
+  }
+  cont.innerHTML = html;
+  cont.scrollTop = cont.scrollHeight;
+}
+function suscribirChat(){
+  if(chatChannel){ sb.removeChannel(chatChannel); }
+  chatChannel = sb.channel('chat_admin_'+chatUsuarioActivo)
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'school_messages', filter:'usuario_id=eq.'+chatUsuarioActivo}, function(payload){
+      cargarMensajesChat();
+    }).subscribe();
+}
+function enviarMensajeAdmin(){
+  var input = document.getElementById('inputChat');
+  var texto = input.value.trim();
+  if(!texto || !chatUsuarioActivo){ return; }
+  input.value = '';
+  sb.from('school_messages').insert([{
+    usuario_id: chatUsuarioActivo,
+    remitente: 'admin',
+    mensaje: texto
+  }]).then(function(res){
+    if(res.error){ mostrarToast('No se pudo enviar'); return; }
+    cargarMensajesChat();
+  });
+}
+
+// ============ MODALES GENERICOS ============
+function abrirModal(id){ document.getElementById(id).classList.remove('oculto'); }
+function cerrarModal(id){ document.getElementById(id).classList.add('oculto'); }
+
+// ============ UTIL ============
+function escapeHtml(str){
+  if(str === null || str === undefined){ return ''; }
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ============ INIT ============
+armarPinPad();
+</script>
+</body>
+</html>
